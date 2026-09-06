@@ -64,7 +64,7 @@ public class AuthenticationService {
 
 
 		/*
-		 * IMPORTANTISSIMO:
+		 * :
 		 *
 		 * La password NON deve essere salvata in chiaro.
 		 *
@@ -141,7 +141,7 @@ public class AuthenticationService {
 		 * Restituzione del token.
 		 */
 		return new AuthenticationResponse(
-				jwtToken
+				jwtToken , utente.getNome()
 		);
 	}
 
@@ -153,18 +153,6 @@ public class AuthenticationService {
 			LoginRequest request
 	) {
 
-		/*
-		 * Spring Security verifica:
-		 *
-		 * email
-		 * +
-		 * password
-		 *
-		 * utilizzando:
-		 *
-		 * CustomUserDetails
-		 * PasswordEncoder
-		 */
 		authenticationManager.authenticate(
 
 				new UsernamePasswordAuthenticationToken(
@@ -173,11 +161,6 @@ public class AuthenticationService {
 				)
 		);
 
-
-		/*
-		 * Se arriviamo qui significa che
-		 * l'autenticazione è andata a buon fine.
-		 */
 		Utente utente =
 				utenteRepository
 						.findByEmail(request.getEmail())
@@ -199,7 +182,8 @@ public class AuthenticationService {
 		 * Restituzione del JWT.
 		 */
 		return new AuthenticationResponse(
-				jwtToken
+				jwtToken , utente.getNome()
+
 		);
 	}
 }
