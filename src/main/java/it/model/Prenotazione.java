@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -27,7 +28,7 @@ public class Prenotazione {
     private Integer numeroGiocatori;
 
     @Column(name="costo_totale")
-    private Double costoTotale;
+    private BigDecimal costoTotale;
 
     @Column(name="stato_prenotazione")
     private String statoPrenotazione;

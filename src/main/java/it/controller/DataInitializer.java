@@ -1,24 +1,21 @@
-
 package it.controller;
 
-//import it.enumerated.AbbonamentoTypeEnum;
-//import it.enumerated.GiorniEnum;
-//import it.enumerated.PagamentoStatoEnum;
-//import it.enumerated.PagamentoTypeEnum;
-import it.model.*;
-import it.repository.*;
+import it.enumerated.RuoloEnum;
+import it.model.Campo;
+import it.model.Utente;
+import it.model.DisponibilitaCampo;
+import it.repository.CampoRepository;
+import it.repository.DisponibilitaCampoRepository;
+import it.repository.UtenteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
-//import java.math.BigDecimal;
-//import java.time.LocalDate;
-import java.time.LocalDateTime;
-//import java.time.LocalTime;
-import it.enumerated.*;
-import it.model.*;
-import it.repository.*;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Component
 @RequiredArgsConstructor
@@ -27,10 +24,6 @@ public class DataInitializer implements CommandLineRunner {
 	private final UtenteRepository utenteRepository;
 	private final CampoRepository campoRepository;
 	private final DisponibilitaCampoRepository disponibilitaRepository;
-	private final PrenotazioneRepository prenotazioneRepository;
-	private final PagamentoRepository pagamentoRepository;
-	private final CorsoRepository corsoRepository;
-	private final AbbonamentoRepository abbonamentoRepository;
 
 	private final PasswordEncoder passwordEncoder;
 
@@ -38,21 +31,86 @@ public class DataInitializer implements CommandLineRunner {
 	@Override
 	public void run(String... args) {
 
+		// ==========================================
+		// UTENTI
+		// ==========================================
+
 		creaAdmin();
 		creaUtenti();
-		//creaCampi();
-		//creaDisponibilita();
-		//creaPrenotazioni();
-		//creaPagamenti();
-		//creaCorsi();
-		//creaAbbonamenti();
 
-		System.out.println("Database inizializzato correttamente, creazione solo di ADMIN");
+
+		// ==========================================
+		// CAMPI
+		// ==========================================
+
+		Campo padel = creaCampo(
+				"Campo 1",
+				"Padel",
+				BigDecimal.valueOf(25.00)
+
+		);
+
+		Campo tennis = creaCampo(
+				"Campo 2",
+				"Tennis",
+				BigDecimal.valueOf(20.00)
+
+		);
+
+		Campo calcio5 = creaCampo(
+				"Campo 3",
+				"Calcio a 5",
+				BigDecimal.valueOf(50.00)
+
+		);
+
+		Campo basket = creaCampo(
+				"Campo 4",
+				"Basket",
+				BigDecimal.valueOf(35.00)
+
+		);
+
+		Campo calcio11 = creaCampo(
+				"Campo 5",
+				"Calcio a 11",
+				BigDecimal.valueOf(100.00)
+
+		);
+
+
+		// ==========================================
+		// DISPONIBILITÀ
+		// ==========================================
+
+		creaDisponibilita(padel);
+		creaDisponibilita(tennis);
+		creaDisponibilita(calcio5);
+		creaDisponibilita(basket);
+		creaDisponibilita(calcio11);
+
+
+		System.out.println(
+				"=============================================="
+		);
+
+		System.out.println(
+				"DATABASE INIZIALIZZATO CORRETTAMENTE"
+		);
+
+		System.out.println(
+				"Admin, utenti, campi e disponibilità creati."
+		);
+
+		System.out.println(
+				"=============================================="
+		);
 	}
 
 
+	// =========================================================
 	// ADMIN
-
+	// =========================================================
 
 	private void creaAdmin() {
 
@@ -78,10 +136,17 @@ public class DataInitializer implements CommandLineRunner {
 				LocalDateTime.now()
 		);
 
-		admin.setRuolo(RuoloEnum.ADMIN);
+		admin.setRuolo(
+				RuoloEnum.ADMIN
+		);
 
 		utenteRepository.save(admin);
-		}
+	}
+
+
+	// =========================================================
+	// UTENTI
+	// =========================================================
 
 	private void creaUtenti() {
 
@@ -105,6 +170,7 @@ public class DataInitializer implements CommandLineRunner {
 				"francesco.verdi@gmail.com",
 				"32789098533"
 		);
+
 		creaUtente(
 				"Giuseppe",
 				"Esposito",
@@ -129,7 +195,9 @@ public class DataInitializer implements CommandLineRunner {
 	) {
 
 		if (utenteRepository.findByEmail(email).isPresent()) {
-			return utenteRepository.findByEmail(email).get();
+			return utenteRepository
+					.findByEmail(email)
+					.get();
 		}
 
 		Utente utente = new Utente();
@@ -144,7 +212,9 @@ public class DataInitializer implements CommandLineRunner {
 
 		utente.setTelefono(telefono);
 
-		utente.setRuolo(RuoloEnum.USER);
+		utente.setRuolo(
+				RuoloEnum.USER
+		);
 
 		utente.setDataRegistrazione(
 				LocalDateTime.now()
@@ -152,476 +222,129 @@ public class DataInitializer implements CommandLineRunner {
 
 		return utenteRepository.save(utente);
 	}
+
+
+	// =========================================================
+	// CAMPI
+	// =========================================================
+
+	private Campo creaCampo(
+			String nome,
+			String tipologia,
+			BigDecimal prezzo
+	) {
+
+		Campo campo = new Campo();
+
+		campo.setNome(nome);
+		campo.setTipologia(tipologia);
+		campo.setPrezzo(prezzo);
+		campo.setCoperto(true);
+
+		return campoRepository.save(campo);
+	}
+
+
+	// =========================================================
+	// DISPONIBILITÀ
+	// =========================================================
+
+	private void creaDisponibilita(Campo campo) {
+
+		/*
+		 * Creiamo le disponibilità per i prossimi 14 giorni.
+		 *
+		 * Ogni giorno:
+		 *
+		 * 09:00 - 10:00
+		 * 10:00 - 11:00
+		 * 11:00 - 12:00
+		 * ...
+		 * 20:00 - 21:00
+		 *
+		 * Ogni slot viene salvato come un record
+		 * DisponibilitaCampo.
+		 */
+
+		LocalDate oggi = LocalDate.now();
+
+		for (int giorno = 1; giorno <= 14; giorno++) {
+
+			LocalDate data = oggi.plusDays(giorno);
+
+
+			// Dalle 09:00 alle 21:00
+			for (int ora = 9; ora < 21; ora++) {
+
+				LocalDateTime inizio =
+						data.atTime(ora, 0);
+
+				LocalDateTime fine =
+						data.atTime(ora + 1, 0);
+
+
+				DisponibilitaCampo disponibilita =
+						new DisponibilitaCampo();
+
+
+				// ==========================================
+				// CAMPO
+				// ==========================================
+
+				disponibilita.setCampo(campo);
+
+
+				// ==========================================
+				// DATA
+				// ==========================================
+
+				/*
+				 * La data identifica il giorno.
+				 *
+				 * Esempio:
+				 *
+				 * 2026-09-15 00:00
+				 */
+
+				disponibilita.setData(
+						data.atStartOfDay()
+				);
+
+
+				// ==========================================
+				// ORARIO SLOT
+				// ==========================================
+
+				disponibilita.setOraInizio(
+						inizio
+				);
+
+				disponibilita.setOraFine(
+						fine
+				);
+
+
+				// ==========================================
+				// DISPONIBILITÀ
+				// ==========================================
+
+				disponibilita.setDisponibilita(
+						true
+				);
+
+				disponibilita.setStatoDisponibilita(
+						"DISPONIBILE"
+				);
+
+
+				// ==========================================
+				// SALVATAGGIO
+				// ==========================================
+
+				disponibilitaRepository.save(
+						disponibilita
+				);
+			}
+		}
+	}
 }
-
-
-
-/*
-    // =========================================================
-    // UTENTI
-    // =========================================================
-
-
-
-
-    // =========================================================
-    // CAMPI
-    // =========================================================
-
-    private void creaCampi() {
-
-        creaCampo(
-                "Campo 1",
-                "Padel",
-                25.00
-        );
-
-        creaCampo(
-                "Campo 2",
-                "Tennis",
-                20.00
-        );
-
-        creaCampo(
-                "Campo 3",
-                "Calcio a 5",
-                50.00
-        );
-
-        creaCampo(
-                "Campo 4",
-                "Basket",
-                35.00
-        );
-		creaCampo("Campo 5",
-				"Calcio a 11",
-				100.00);
-    }
-
-
-    private Campo creaCampo(
-            String nome,
-            String tipologia,
-            Double prezzo) {
-
-        Campo c = new Campo();
-
-        c.setNome(nome);
-        c.setTipologia(tipologia);
-        c.setPrezzo(prezzo);
-        c.setCoperto(true);
-
-        return campoRepository.save(c);
-    }
-
-
-    // =========================================================
-    // DISPONIBILITA
-    // =========================================================
-
-    private void creaDisponibilita() {
-
-        Campo padel = campoRepository.findByNome("Campo 1");
-
-        Campo tennis = campoRepository .findByNome("Campo 2");
-
-        Campo calcetto = campoRepository.findByNome("Campo 3");
-
-		Campo basket=campoRepository.findByNome("Campo 4");
-
-	    Campo calcio=campoRepository.findByNome("Campo 5");
-
-	    creaDisponibilita(
-                padel,
-                LocalDate.now()
-                        .plusDays(1)
-                        .atTime(18, 0)
-        );
-
-        creaDisponibilita(
-                tennis,
-                LocalDate.now()
-                        .plusDays(2)
-                        .atTime(17, 0)
-        );
-
-        creaDisponibilita(
-                calcetto,
-                LocalDate.now()
-                        .plusDays(3)
-                        .atTime(20, 0)
-        );
-        creaDisponibilita(
-                basket,
-                LocalDate.now()
-                        .plusDays(3)
-                        .atTime(19, 0)
-        );
-		creaDisponibilita(
-				calcio,
-				LocalDate.now()
-						.plusDays(4)
-						.atTime(19, 0));
-    }
-
-
-    private DisponibilitaCampo creaDisponibilita(
-            Campo campo,
-            LocalDateTime data) {
-
-        DisponibilitaCampo d =
-                new DisponibilitaCampo();
-
-        d.setCampo(campo);
-        d.setData(data);
-        d.setOraInizio(data);
-        d.setOraFine(data.plusHours(1));
-
-        d.setStatoDisponibilita(
-                "DISPONIBILE"
-        );
-
-        return disponibilitaRepository.save(d);
-    }
-
-
-    // =========================================================
-    // PRENOTAZIONI
-    // =========================================================
-
-    private void creaPrenotazioni() {
-
-        Utente mario = utenteRepository
-                .findByEmail("mario.rossi@gmail.com")
-                .orElseThrow();
-
-        Utente luca = utenteRepository
-                .findByEmail("luca.bianchi@gmail.com")
-                .orElseThrow();
-
-        Utente francesco = utenteRepository
-                .findByEmail("francesco.verdi@gmail.com")
-                .orElseThrow();
-
-		Utente peppino=utenteRepository
-				.findByEmail("giuseppe.esposito@gmail.com")
-				.orElseThrow();
-
-        DisponibilitaCampo dispPadel =
-                disponibilitaRepository.findAll()
-                        .get(0);
-
-        DisponibilitaCampo dispTennis =
-                disponibilitaRepository.findAll()
-                        .get(1);
-
-        DisponibilitaCampo dispCalcetto =
-                disponibilitaRepository.findAll()
-                        .get(2);
-
-		DisponibilitaCampo dispCalcio=
-				disponibilitaRepository.findAll()
-								.get(3);
-
-
-        creaPrenotazione(
-                mario,
-                dispPadel,
-                4,
-                40.00
-        );
-
-        creaPrenotazione(
-                luca,
-                dispTennis,
-                2,
-                30.00
-        );
-
-        creaPrenotazione(
-                francesco,
-                dispCalcetto,
-                10,
-                50.00
-        );
-		creaPrenotazione(
-				francesco,
-				dispCalcio,
-				22,
-				160.00
-		);
-    }
-
-
-    private Prenotazione creaPrenotazione(
-            Utente utente,
-            DisponibilitaCampo disponibilita,
-            Integer giocatori,
-            Double costo) {
-
-        Prenotazione p =
-                new Prenotazione();
-
-        p.setUtenteCreato(utente);
-        p.setDisponibilitaCampo(disponibilita);
-        p.setNumeroGiocatori(giocatori);
-        p.setCostoTotale(costo);
-
-        p.setStatoPrenotazione(
-                "CONFERMATA"
-        );
-
-        p.setDataPrenotazione(
-                LocalDateTime.now()
-        );
-
-        return prenotazioneRepository.save(p);
-    }
-
-
-    // =========================================================
-    // PAGAMENTI
-    // =========================================================
-
-    private void creaPagamenti() {
-
-        Utente mario = utenteRepository
-                .findByEmail("mario.rossi@gmail.com")
-                .orElseThrow();
-
-        Utente luca = utenteRepository
-                .findByEmail("luca.bianchi@gmail.com")
-                .orElseThrow();
-
-        Utente francesco = utenteRepository
-                .findByEmail("francesco.verdi@gmail.com")
-                .orElseThrow();
-
-
-        Prenotazione pren1 =
-                prenotazioneRepository.findAll()
-                        .get(0);
-
-        Prenotazione pren2 =
-                prenotazioneRepository.findAll()
-                        .get(1);
-
-        Prenotazione pren3 =
-                prenotazioneRepository.findAll()
-                        .get(2);
-
-
-        creaPagamento(
-                mario,
-                pren1,
-                40.00,
-                PagamentoTypeEnum.CARTA
-        );
-
-        creaPagamento(
-                luca,
-                pren2,
-                30.00,
-                PagamentoTypeEnum.PAYPAL
-        );
-
-        creaPagamento(
-                francesco,
-                pren3,
-                50.00,
-                PagamentoTypeEnum.CONTANTI
-        );
-    }
-
-
-    private Pagamento creaPagamento(
-            Utente utente,
-            Prenotazione prenotazione,
-            Double prezzo,
-            PagamentoTypeEnum metodo) {
-
-        Pagamento p =
-                new Pagamento();
-
-        p.setUtente(utente);
-        p.setPrenotazione(prenotazione);
-        p.setPrezzo(prezzo);
-        p.setMetodo(metodo);
-
-        p.setStato(
-                PagamentoStatoEnum.COMPLETATO
-        );
-
-        p.setDataPagamento(
-                LocalDateTime.now()
-        );
-
-        return pagamentoRepository.save(p);
-    }
-
-
-    // =========================================================
-    // CORSI
-    // =========================================================
-
-    private void creaCorsi() {
-
-        Campo padel = campoRepository
-                .findByNome("Campo 1");
-
-
-        Campo tennis = campoRepository
-                .findByNome("Campo 2");
-
-
-
-        creaCorso(
-                "Corso Base",
-                "Padel",
-                padel
-        );
-
-        creaCorso(
-                "Corso Avanzato",
-                "Tennis",
-                tennis
-        );
-    }
-
-
-    private Corso creaCorso(
-            String nome,
-            String sport,
-            Campo campo) {
-
-        Corso c =
-                new Corso();
-
-        c.setNome(nome);
-        c.setSport(sport);
-        c.setLivello("Base");
-
-        c.setGiorni(
-                GiorniEnum.LUNEDI
-        );
-
-        c.setOraInizio(
-                LocalTime.of(18, 0)
-        );
-
-        c.setOraFine(
-                LocalTime.of(19, 30)
-        );
-
-        c.setPrezzo(80.00);
-        c.setCampo(campo);
-
-        return corsoRepository.save(c);
-    }
-
-
-    // =========================================================
-    // ABBONAMENTI
-    // =========================================================
-
-    private void creaAbbonamenti() {
-
-        Utente mario = utenteRepository
-                .findByEmail("mario.rossi@gmail.com")
-                .orElseThrow();
-
-        Utente luca = utenteRepository
-                .findByEmail("luca.bianchi@gmail.com")
-                .orElseThrow();
-
-        Utente francesco = utenteRepository
-                .findByEmail("francesco.verdi@gmail.com")
-                .orElseThrow();
-
-        Utente giuseppe = utenteRepository
-                .findByEmail("giuseppe.esposito@gmail.com")
-                .orElseThrow();
-
-        Utente andrea = utenteRepository
-                .findByEmail("andrea.romano@gmail.com")
-                .orElseThrow();
-
-
-        creaAbbonamento(
-                mario,
-                AbbonamentoTypeEnum.MENSILE,
-                BigDecimal.valueOf(50)
-        );
-
-        creaAbbonamento(
-                luca,
-                AbbonamentoTypeEnum.TRIMESTRALE,
-                BigDecimal.valueOf(120)
-        );
-
-        creaAbbonamento(
-                francesco,
-                AbbonamentoTypeEnum.SEMESTRALE,
-                BigDecimal.valueOf(220)
-        );
-
-        creaAbbonamentoScaduto(
-                giuseppe,
-                AbbonamentoTypeEnum.MENSILE,
-                BigDecimal.valueOf(50)
-        );
-
-        creaAbbonamento(
-                andrea,
-                AbbonamentoTypeEnum.ANNUALE,
-                BigDecimal.valueOf(400)
-        );
-    }
-
-
-    private Abbonamento creaAbbonamento(
-            Utente utente,
-            AbbonamentoTypeEnum tipo,
-            BigDecimal prezzo) {
-
-        Abbonamento a =
-                new Abbonamento();
-
-        a.setUtente(utente);
-        a.setTipo(tipo);
-        a.setPrezzo(prezzo);
-
-        a.crea();
-
-        return abbonamentoRepository.save(a);
-    }
-
-
-    private Abbonamento creaAbbonamentoScaduto(
-            Utente utente,
-            AbbonamentoTypeEnum tipo,
-            BigDecimal prezzo) {
-
-        Abbonamento a =
-                new Abbonamento();
-
-        a.setUtente(utente);
-        a.setTipo(tipo);
-        a.setPrezzo(prezzo);
-
-        a.setDataInizio(
-                LocalDate.now().minusMonths(2)
-        );
-
-        a.setDataFine(
-                LocalDate.now().minusMonths(1)
-        );
-
-        a.setStato(
-                StatoAbbonamentoEnum.SCADUTO
-        );
-
-        return abbonamentoRepository.save(a);
-    }
-*/
-

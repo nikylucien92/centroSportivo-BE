@@ -3,6 +3,7 @@ import it.model.Prenotazione;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @AllArgsConstructor
@@ -14,8 +15,8 @@ public class PrenotazioneDto {
     private Integer id;
     private LocalDateTime dataPrenotazione;
     private Integer numeroGiocatori;
-    private Double costoTotale;
-    private Double quotaPersona;
+    private BigDecimal costoTotale;
+    private BigDecimal quotaPersona;
     private String statoPrenotazione;
     private DisponibilitaCampoDto disponibilitaCampo;
     @JsonIgnore
