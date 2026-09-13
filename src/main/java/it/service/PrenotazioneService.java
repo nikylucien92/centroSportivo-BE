@@ -1,9 +1,8 @@
 package it.service;
 
-import it.dto.DisponibilitaCampoDto;
 import it.dto.PrenotazioneDto;
-import it.security.PrenotazioneRequest;
-import it.dto.UtenteDto;
+import it.mapper.PrenotazioneMapper;
+import it.mapper.Converter;
 import it.model.Campo;
 import it.model.DisponibilitaCampo;
 import it.model.Prenotazione;
@@ -11,294 +10,198 @@ import it.model.Utente;
 import it.repository.DisponibilitaCampoRepository;
 import it.repository.PrenotazioneRepository;
 import it.repository.UtenteRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 @Service
-@RequiredArgsConstructor
-public class PrenotazioneService {
+public class PrenotazioneService  extends AbstractService<Prenotazione,PrenotazioneDto> {
 
 	private final PrenotazioneRepository prenotazioneRepository;
 	private final DisponibilitaCampoRepository disponibilitaCampoRepository;
 	private final UtenteRepository utenteRepository;
+	private final PrenotazioneMapper prenotazioneMapper;
+	private final EmailService emailService;
 
+	protected PrenotazioneService(
+			JpaRepository<Prenotazione, Integer> repository,
+			Converter<Prenotazione, PrenotazioneDto> converter,
+			PrenotazioneMapper prenotazioneMapper,
+			PrenotazioneRepository prenotazioneRepository,
+			UtenteRepository utenteRepository,
+			DisponibilitaCampoRepository disponibilitaCampoRepository,
+			EmailService emailService) {
+
+		super(repository, converter);
+		this.prenotazioneMapper = prenotazioneMapper;
+		this.prenotazioneRepository = prenotazioneRepository;
+		this.utenteRepository = utenteRepository;
+		this.disponibilitaCampoRepository = disponibilitaCampoRepository;
+		this.emailService = emailService;
+	}
 
 	@Transactional
-	public PrenotazioneDto creaPrenotazione(
-			PrenotazioneRequest request
-	) {
+	public PrenotazioneDto effetuaPrenotazione(PrenotazioneDto prenotazioneDto, Integer utenteId) throws Exception {
 
-		// =====================================================
-		// 1. VALIDAZIONE NUMERO GIOCATORI
-		// =====================================================
+		// 1. Verifica utente ,restituisce un Optional<Utente>. Se è vuoto (utente non esiste)
+		Utente utente = utenteRepository.findById(utenteId)
+				.orElseThrow(() -> new Exception("Utente non trovato"));
 
-		if (request.getNumeroGiocatori() == null ||
-				request.getNumeroGiocatori() <= 0) {
+		// 2. Mappatura e associazione
+		Prenotazione prenotazione = prenotazioneMapper.toEntity(prenotazioneDto);
+		prenotazione.setUtenteCreato(utente);
 
-			throw new IllegalArgumentException(
-					"Il numero dei giocatori deve essere maggiore di zero"
-			);
+		// 3. Gestione data prenotazione
+		//Se il frontend non manda una data di prenotazione nel body, la impostiamo automaticamente al momento attuale.
+		if (prenotazione.getDataPrenotazione() == null) {
+			prenotazione.setDataPrenotazione(LocalDateTime.now());
 		}
 
-		// =====================================================
-		// 2. RECUPERO DISPONIBILITÀ
-		// =====================================================
+		// 4. Validazione disponibilità campo (se indicata nel DTO)
+		DisponibilitaCampo disponibilita = null;
 
-		DisponibilitaCampo disponibilita =
-				disponibilitaCampoRepository
-						.findById(request.getDisponibilitaCampoId())
-						.orElseThrow(() ->
-								new RuntimeException(
-										"Disponibilità non trovata"
-								)
-						);
+		if (prenotazioneDto.getDisponibilitaCampo() != null
+				&& prenotazioneDto.getDisponibilitaCampo().getId() != null) {
 
+			disponibilita = disponibilitaCampoRepository
+					.findById(prenotazioneDto.getDisponibilitaCampo().getId())
+					.orElseThrow(() -> new Exception("Disponibilità non trovata"));
 
-		// =====================================================
-		// 3. CONTROLLO DISPONIBILITÀ
-		// =====================================================
+			prenotazione.setDisponibilitaCampo(disponibilita);
 
-		if (!Boolean.TRUE.equals(
-				disponibilita.getDisponibilita()
-		)) {
-
-			throw new RuntimeException(
-					"Il campo non è disponibile per questo orario"
-			);
+			disponibilita.setDisponibilita(false);
+			disponibilita.setStatoDisponibilita("PRENOTATO");
+			disponibilitaCampoRepository.save(disponibilita);
 		}
 
-		if (!"DISPONIBILE".equalsIgnoreCase(
-				disponibilita.getStatoDisponibilita()
-		)) {
-
-			throw new RuntimeException(
-					"Il campo non è disponibile per questo orario"
-			);
+		if (prenotazione.getStatoPrenotazione() == null) {
+			prenotazione.setStatoPrenotazione("CONFERMATA");
 		}
 
+		// 5. Salvataggio su DB
+		Prenotazione saved = prenotazioneRepository.save(prenotazione);
 
-		// =====================================================
-		// 4. RECUPERO UTENTE AUTENTICATO
-		// =====================================================
-
-		Authentication authentication =
-				SecurityContextHolder
-						.getContext()
-						.getAuthentication();
-
-		String email = authentication.getName();
-
-		Utente utente =
-				utenteRepository
-						.findByEmail(email)
-						.orElseThrow(() ->
-								new RuntimeException(
-										"Utente autenticato non trovato"
-								)
-						);
-
-
-		// =====================================================
-		// 5. RECUPERO CAMPO
-		// =====================================================
-		Campo campo = disponibilita.getCampo();
-
-		if (campo == null) {
-
-			throw new RuntimeException(
-					"Il campo associato alla disponibilità non esiste"
-			);
+		// 6. Invio email di conferma (asincrona)
+		String nomeCampo = "il campo prenotato";
+		if (disponibilita != null && disponibilita.getCampo() != null) {
+			Campo campo = disponibilita.getCampo();
+			nomeCampo = campo.getNome() != null ? campo.getNome() : nomeCampo;
 		}
 
-		// =====================================================
-		// 6. RECUPERO PREZZO DEL CAMPO
-		// =====================================================
+		String corpoHtml = costruisciEmailConferma(utente, nomeCampo, saved);
+		emailService.sendEmail(
+				utente.getEmail(),
+				"Conferma prenotazione - Centro Sportivo",
+				corpoHtml
+		);
 
-		BigDecimal prezzoCampo = campo.getPrezzo();
+		// 7. Restituzione DTO
+		return prenotazioneMapper.toDTO(saved);
+	}
 
-		if (prezzoCampo == null ||
-				prezzoCampo.compareTo(BigDecimal.ZERO) < 0) {
+	// 2. CANCELLA PRENOTAZIONE
+	@Transactional
+	public List<PrenotazioneDto> cancellaPrenotazione(Integer idUtente, Integer idPrenotazione) throws Exception {
 
-			throw new RuntimeException(
-					"Il prezzo del campo non è valido"
-			);
+		Prenotazione prenotazione = prenotazioneRepository.findById(idPrenotazione)
+				.orElseThrow(() -> new Exception("Prenotazione non trovata"));
+
+		if (prenotazione.getUtenteCreato() == null
+				|| !prenotazione.getUtenteCreato().getId().equals(idUtente)) {
+			throw new Exception("La prenotazione indicata non appartiene all'utente selezionato");
 		}
 
+		// Libera lo slot di disponibilità associato, se presente
+		DisponibilitaCampo disponibilita = prenotazione.getDisponibilitaCampo();
+		if (disponibilita != null) {
+			disponibilita.setDisponibilita(true);
+			disponibilita.setStatoDisponibilita("DISPONIBILE");
+			disponibilitaCampoRepository.save(disponibilita);
+		}
 
-		// =====================================================
-		// 7. CALCOLO COSTO TOTALE
-		// =====================================================
+		prenotazioneRepository.delete(prenotazione);
 
-		/*
-		 * Ogni disponibilità rappresenta un'ora.
-		 *
-		 * Esempio:
-		 *
-		 * Padel = 25 €
-		 * Giocatori = 4
-		 *
-		 * costo totale = 25 €
-		 */
+		return prenotazioneRepository.findByUtenteCreatoId(idUtente).stream()
+				.map(prenotazioneMapper::toDTO)
+				.toList();
+	}
 
-		BigDecimal costoTotale = prezzoCampo;
+	// 3. CALCOLA SPESA TOTALE
+	public Double calcolaSpesaTotale(Integer idUtente) {
 
+		utenteRepository.findById(idUtente)
+				.orElseThrow(() -> new RuntimeException("Utente non trovato"));
 
-		// =====================================================
-		// 8. CALCOLO QUOTA PER PERSONA
-		// =====================================================
+		Double totale = prenotazioneRepository.getTotaleSpesoDaUtente(idUtente);
+		return totale != null ? totale : 0.0;
+	}
 
-		BigDecimal quotaPersona =
-				costoTotale.divide(
-						BigDecimal.valueOf(
-								request.getNumeroGiocatori()
-						),
-						2,
-						RoundingMode.HALF_UP
-				);
+	// 4. LISTA PRENOTAZIONI PAGINATA
+	public Page<PrenotazioneDto> getListaPrenotazioniConPaginazione(Integer idUtente, int page, int size) {
 
+		utenteRepository.findById(idUtente)
+				.orElseThrow(() -> new RuntimeException("Utente non trovato"));
 
-		// =====================================================
-		// 9. CREAZIONE PRENOTAZIONE
-		// =====================================================
+		Pageable pageable = PageRequest.of(page, size);
 
-		Prenotazione prenotazione =
-				new Prenotazione();
-
-		prenotazione.setDataPrenotazione(
-				disponibilita.getOraInizio()
-		);
-
-		prenotazione.setNumeroGiocatori(
-				request.getNumeroGiocatori()
-		);
-
-		prenotazione.setCostoTotale(
-				costoTotale
-		);
-
-		prenotazione.setStatoPrenotazione(
-				"CONFERMATA"
-		);
-
-		prenotazione.setDisponibilitaCampo(
-				disponibilita
-		);
-
-		prenotazione.setUtenteCreato(
-				utente
-		);
-
-
-		// =====================================================
-		// 10. SALVATAGGIO PRENOTAZIONE
-		// =====================================================
-
-		Prenotazione prenotazioneSalvata =
-				prenotazioneRepository.save(
-						prenotazione
-				);
-
-
-		// =====================================================
-		// 11. AGGIORNAMENTO DISPONIBILITÀ
-		// =====================================================
-
-		disponibilita.setDisponibilita(false);
-
-		disponibilita.setStatoDisponibilita(
-				"PRENOTATO"
-		);
-
-		disponibilitaCampoRepository.save(
-				disponibilita
-		);
-
-
-		// =====================================================
-		// 12. CONVERSIONE IN DTO
-		// =====================================================
-
-		return convertiInDto(
-				prenotazioneSalvata,
-				quotaPersona
+		return prenotazioneMapper.toDTOPage(
+				prenotazioneRepository.findPrenotazioniByUtente(idUtente, pageable)
 		);
 	}
 
 
-	// =========================================================
-	// CONVERSIONE ENTITY → DTO
-	// =========================================================
+	// 5. PRENOTAZIONI PER DATA
+	public List<PrenotazioneDto> trovaPrenotazioniPerData(LocalDate data) {
 
-	private PrenotazioneDto convertiInDto(
-			Prenotazione prenotazione,
-			BigDecimal quotaPersona
-	) {
+		LocalDateTime inizio = data.atStartOfDay();
+		LocalDateTime fine = data.atTime(LocalTime.MAX);
 
-		DisponibilitaCampo disponibilita =
-				prenotazione.getDisponibilitaCampo();
-
-
-		DisponibilitaCampoDto disponibilitaDto =
-				new DisponibilitaCampoDto();
-
-		disponibilitaDto.setId(
-				disponibilita.getId()
-		);
-
-		disponibilitaDto.setStatoDisponibilita(
-				disponibilita.getStatoDisponibilita()
-		);
-
-		disponibilitaDto.setData(
-				disponibilita.getData()
-		);
-
-		disponibilitaDto.setOraInizio(
-				disponibilita.getOraInizio()
-		);
-
-		disponibilitaDto.setOraFine(
-				disponibilita.getOraFine()
-		);
-
-
-		PrenotazioneDto dto =
-				new PrenotazioneDto();
-
-		dto.setId(
-				prenotazione.getId()
-		);
-
-		dto.setDataPrenotazione(
-				prenotazione.getDataPrenotazione()
-		);
-
-		dto.setNumeroGiocatori(
-				prenotazione.getNumeroGiocatori()
-		);
-
-		dto.setCostoTotale(
-				prenotazione.getCostoTotale()
-		);
-
-		dto.setQuotaPersona(
-				quotaPersona
-		);
-
-		dto.setStatoPrenotazione(
-				prenotazione.getStatoPrenotazione()
-		);
-
-		dto.setDisponibilitaCampo(
-				disponibilitaDto
-		);
-
-		return dto;
+		return prenotazioneRepository.findByDataPrenotazioneBetween(inizio, fine).stream()
+				.map(prenotazioneMapper::toDTO)
+				.toList();
 	}
+
+	// TEMPLATE EMAIL DI CONFERMA
+	private String costruisciEmailConferma(Utente utente, String nomeCampo, Prenotazione prenotazione) {
+
+		DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy 'alle' HH:mm");
+		String dataFormattata = prenotazione.getDataPrenotazione() != null
+				? prenotazione.getDataPrenotazione().format(formatter)
+				: "";
+
+		return """
+				<html>
+				  <body style="font-family: Arial, sans-serif; color: #222;">
+				    <h2>Prenotazione confermata!</h2>
+				    <p>Ciao %s,</p>
+				    <p>la tua prenotazione è stata registrata con successo. Ecco il riepilogo:</p>
+				    <table style="border-collapse: collapse;">
+				      <tr><td style="padding:4px 8px;"><b>Campo</b></td><td style="padding:4px 8px;">%s</td></tr>
+				      <tr><td style="padding:4px 8px;"><b>Data</b></td><td style="padding:4px 8px;">%s</td></tr>
+				      <tr><td style="padding:4px 8px;"><b>Numero giocatori</b></td><td style="padding:4px 8px;">%s</td></tr>
+				      <tr><td style="padding:4px 8px;"><b>Costo totale</b></td><td style="padding:4px 8px;">%s €</td></tr>
+				    </table>
+				    <p>Grazie per aver scelto Centro Sportivo!</p>
+				  </body>
+				</html>
+				"""
+				.formatted(
+						utente.getNome() != null ? utente.getNome() : "",
+						nomeCampo,
+						dataFormattata,
+						prenotazione.getNumeroGiocatori(),
+						prenotazione.getCostoTotale()
+				);
+	}
+
+
 }
