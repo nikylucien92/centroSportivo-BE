@@ -141,7 +141,8 @@ public class AuthenticationService {
 		 * Restituzione del token.
 		 */
 		return new AuthenticationResponse(
-				jwtToken , utente.getNome()
+				jwtToken , utente.getNome() ,
+				utente.getId()
 		);
 	}
 
@@ -182,7 +183,7 @@ public class AuthenticationService {
 		 * Restituzione del JWT.
 		 */
 		return new AuthenticationResponse(
-				jwtToken , utente.getNome()
+				jwtToken , utente.getNome() ,utente.getId()
 
 		);
 	}
