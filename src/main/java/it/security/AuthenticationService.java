@@ -62,36 +62,12 @@ public class AuthenticationService {
 				registerRequest.getEmail()
 		);
 
-
-		/*
-		 * :
-		 *
-		 * La password NON deve essere salvata in chiaro.
-		 *
-		 * BCrypt trasforma:
-		 *
-		 * password123
-		 *
-		 * in qualcosa del tipo:
-		 *
-		 * $2a$10$...
-		 */
 		utente.setPassword(
 				passwordEncoder.encode(
 						registerRequest.getPassword()
 				)
 		);
 
-
-		/*
-		 * Se la data viene fornita dal client,
-		 * deve essere nel formato:
-		 *
-		 * 2026-08-09T19:30:00
-		 *
-		 * Se non viene fornita, utilizziamo
-		 * automaticamente la data corrente.
-		 */
 		if (registerRequest.getDataRegistrazione() != null
 				&& !registerRequest
 				.getDataRegistrazione()
@@ -111,13 +87,6 @@ public class AuthenticationService {
 			);
 		}
 
-
-		/*
-		 * Un utente che si registra NON può scegliere
-		 * il proprio ruolo.
-		 *
-		 * Il ruolo viene sempre impostato a USER.
-		 */
 		utente.setRuolo(
 				RuoloEnum.USER
 		);
