@@ -37,14 +37,7 @@ public class SecurityFilter {
 
 		http
 
-				/*
-				 * Disabilitiamo CSRF.
-				 *
-				 * Stiamo realizzando una REST API
-				 * autenticata tramite JWT.
-				 */
 				.csrf(AbstractHttpConfigurer::disable)
-
 
 				/*
 				 * CORS
@@ -55,13 +48,6 @@ public class SecurityFilter {
 						)
 				)
 
-
-				/*
-				 * JWT = sessione STATELESS.
-				 *
-				 * Spring non deve creare una sessione
-				 * HTTP per mantenere l'utente autenticato.
-				 */
 				.sessionManagement(session ->
 						session.sessionCreationPolicy(
 								SessionCreationPolicy.STATELESS
@@ -88,14 +74,6 @@ public class SecurityFilter {
 						 */
 				)
 
-
-				/*
-				 * JWT FILTER
-				 *
-				 * Il nostro filtro viene eseguito
-				 * prima del filtro standard di Spring
-				 * UsernamePasswordAuthenticationFilter.
-				 */
 				.addFilterBefore(
 						jwtAuthenticationFilter,
 						UsernamePasswordAuthenticationFilter.class
