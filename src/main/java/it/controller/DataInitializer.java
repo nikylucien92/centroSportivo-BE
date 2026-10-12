@@ -15,7 +15,6 @@ import org.springframework.stereotype.Component;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 
 @Component
 @RequiredArgsConstructor
@@ -244,36 +243,15 @@ public class DataInitializer implements CommandLineRunner {
 		return campoRepository.save(campo);
 	}
 
-
-	// =========================================================
-	// DISPONIBILITÀ
-	// =========================================================
-
 	private void creaDisponibilita(Campo campo) {
 
-		/*
-		 * Creiamo le disponibilità per i prossimi 14 giorni.
-		 *
-		 * Ogni giorno:
-		 *
-		 * 09:00 - 10:00
-		 * 10:00 - 11:00
-		 * 11:00 - 12:00
-		 * ...
-		 * 20:00 - 21:00
-		 *
-		 * Ogni slot viene salvato come un record
-		 * DisponibilitaCampo.
-		 */
 
 		LocalDate oggi = LocalDate.now();
 
-		for (int giorno = 1; giorno <= 14; giorno++) {
+		for (int giorno = 1; giorno <= 60; giorno++) {
 
 			LocalDate data = oggi.plusDays(giorno);
 
-
-			// Dalle 09:00 alle 21:00
 			for (int ora = 9; ora < 21; ora++) {
 
 				LocalDateTime inizio =
@@ -286,47 +264,20 @@ public class DataInitializer implements CommandLineRunner {
 				DisponibilitaCampo disponibilita =
 						new DisponibilitaCampo();
 
-
-				// ==========================================
-				// CAMPO
-				// ==========================================
-
 				disponibilita.setCampo(campo);
-
-
-				// ==========================================
-				// DATA
-				// ==========================================
-
-				/*
-				 * La data identifica il giorno.
-				 *
-				 * Esempio:
-				 *
-				 * 2026-09-15 00:00
-				 */
 
 				disponibilita.setData(
 						data.atStartOfDay()
 				);
-
-
-				// ==========================================
-				// ORARIO SLOT
-				// ==========================================
 
 				disponibilita.setOraInizio(
 						inizio
 				);
 
 				disponibilita.setOraFine(
+
 						fine
 				);
-
-
-				// ==========================================
-				// DISPONIBILITÀ
-				// ==========================================
 
 				disponibilita.setDisponibilita(
 						true
@@ -335,11 +286,6 @@ public class DataInitializer implements CommandLineRunner {
 				disponibilita.setStatoDisponibilita(
 						"DISPONIBILE"
 				);
-
-
-				// ==========================================
-				// SALVATAGGIO
-				// ==========================================
 
 				disponibilitaRepository.save(
 						disponibilita

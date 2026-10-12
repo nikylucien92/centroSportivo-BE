@@ -98,21 +98,21 @@ public class DisponibilitaCampoService
 	public List<DisponibilitaCampoDto> getDisponibilitaByCampoEData(
 			Integer idCampo,
 			LocalDate data) throws Exception {
+
 		campoRepository.findById(idCampo)
 				.orElseThrow(() ->
 						new Exception("Campo non trovato")
 				);
 
 		LocalDateTime inizio = data.atStartOfDay();
+		LocalDateTime fine = data.plusDays(1).atStartOfDay();
 
-		LocalDateTime fine = data.atTime(LocalTime.MAX);
-
-		List<DisponibilitaCampo> lista =
-				disponibilitaCampoRepository
+		//minusNanos : esclude il giorno successivo dall'intervallo
+		List<DisponibilitaCampo> lista =disponibilitaCampoRepository
 						.findByCampoIdAndDataBetween(
 								idCampo,
 								inizio,
-								fine
+								fine.minusNanos(1)
 						);
 
 		if (lista.isEmpty()) {

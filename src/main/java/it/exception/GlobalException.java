@@ -23,7 +23,7 @@ public class GlobalException {
 
 	@ExceptionHandler({BadCredentialsException.class, AuthenticationException.class})
 	public ResponseEntity<Map<String,Object>> handleExceptionAuthentication(){
-		return buildResponse(HttpStatus.UNAUTHORIZED, "CREDENZIALI NON VALIDE ! ");
+		return buildResponse(HttpStatus.UNAUTHORIZED, "Credenziali non valide ");
 
 	}
 
@@ -42,7 +42,7 @@ public class GlobalException {
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
 
-		String messaggio = ex.getMessage() != null ? ex.getMessage() : "Errore interno del server";
+		String messaggio = ex.getMessage() != null ? ex.getMessage() : "Errore interno del server da DB";
 		HttpStatus status = messaggio.toLowerCase().contains("non trovato")
 				? HttpStatus.NOT_FOUND
 				: HttpStatus.INTERNAL_SERVER_ERROR;
