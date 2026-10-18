@@ -26,6 +26,20 @@ public class GlobalException {
 		return buildResponse(HttpStatus.UNAUTHORIZED, "Credenziali non valide ");
 
 	}
+		// REGOLE DI BUSINESS VIOLATE (slot occupato, prenotazione già
+		// annullata, validazioni di dominio in PrenotazioneService)
+
+		@ExceptionHandler(BusinessException.class)
+		public ResponseEntity<Map<String, Object>> handleBusinessException(BusinessException ex) {
+
+			String messaggio = ex.getMessage() != null ? ex.getMessage() : "Richiesta non valida";
+
+			HttpStatus status = messaggio.toLowerCase().contains("non trovata")
+					? HttpStatus.NOT_FOUND
+					: HttpStatus.BAD_REQUEST;
+
+			return buildResponse(status, messaggio);
+		}
 
 	// ARGOMENTI NON VALIDI (es. "Email già registrata" in fase di
 	// registrazione)

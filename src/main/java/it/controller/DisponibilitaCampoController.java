@@ -1,8 +1,6 @@
 package it.controller;
 
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
+
 import it.dto.DisponibilitaCampoDto;
 import it.service.DisponibilitaCampoService;
 import org.springframework.http.ResponseEntity;

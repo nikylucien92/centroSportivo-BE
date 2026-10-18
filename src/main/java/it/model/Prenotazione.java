@@ -1,5 +1,6 @@
 package it.model;
 
+import it.enumerated.StatoPrenotazione;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -30,8 +31,9 @@ public class Prenotazione {
     @Column(name="costo_totale")
     private BigDecimal costoTotale;
 
-    @Column(name="stato_prenotazione")
-    private String statoPrenotazione;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "stato_prenotazione", nullable = false)
+    private StatoPrenotazione statoPrenotazione;
 
     @JoinColumn(name="disponibilita_id")
     @ManyToOne

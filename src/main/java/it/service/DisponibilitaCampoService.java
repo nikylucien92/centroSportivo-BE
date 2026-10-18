@@ -1,6 +1,7 @@
 package it.service;
 
 import it.dto.DisponibilitaCampoDto;
+import it.enumerated.StatoDisponibilita;
 import it.mapper.Converter;
 import it.mapper.DisponibilitaCampoMapper;
 import it.model.Campo;
@@ -93,7 +94,6 @@ public class DisponibilitaCampoService
 				.toList();
 	}
 
-
 	// 4. DISPONIBILITÀ DI UN CAMPO IN UNA DATA
 	public List<DisponibilitaCampoDto> getDisponibilitaByCampoEData(
 			Integer idCampo,
@@ -106,27 +106,20 @@ public class DisponibilitaCampoService
 
 		LocalDateTime inizio = data.atStartOfDay();
 		LocalDateTime fine = data.plusDays(1).atStartOfDay();
+		LocalDateTime adesso = LocalDateTime.now();
 
-		//minusNanos : esclude il giorno successivo dall'intervallo
-		List<DisponibilitaCampo> lista =disponibilitaCampoRepository
-						.findByCampoIdAndDataBetween(
-								idCampo,
-								inizio,
-								fine.minusNanos(1)
-						);
-
-		if (lista.isEmpty()) {
-
-			throw new Exception(
-					"Nessuna disponibilità trovata per il campo "
-							+ idCampo
-							+ " nella data "
-							+ data
-			);
-		}
+		List<DisponibilitaCampo> lista =
+				disponibilitaCampoRepository.findLibereByCampoAndData(
+						idCampo,
+						inizio,
+						fine,
+						adesso,
+						StatoDisponibilita.DISPONIBILE
+				);
 
 		return lista.stream()
 				.map(disponibilitaCampoMapper::toDTO)
-				.toList();
+				.collect(java.util.stream.Collectors.toList());
+		//Collectors.toList() per mantenere la compatibilità anche con Java 8.
 	}
 }

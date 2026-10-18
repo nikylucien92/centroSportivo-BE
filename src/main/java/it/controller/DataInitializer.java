@@ -1,6 +1,7 @@
 package it.controller;
 
 import it.enumerated.RuoloEnum;
+import it.enumerated.StatoDisponibilita;
 import it.model.Campo;
 import it.model.Utente;
 import it.model.DisponibilitaCampo;
@@ -279,12 +280,9 @@ public class DataInitializer implements CommandLineRunner {
 						fine
 				);
 
-				disponibilita.setDisponibilita(
-						true
-				);
 
 				disponibilita.setStatoDisponibilita(
-						"DISPONIBILE"
+						StatoDisponibilita.DISPONIBILE
 				);
 
 				disponibilitaRepository.save(

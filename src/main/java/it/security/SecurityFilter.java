@@ -61,13 +61,11 @@ public class SecurityFilter {
 				.authorizeHttpRequests(auth -> auth
 
 								.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-
+								.requestMatchers("/disponibilita/stream").permitAll()
 								.requestMatchers("/auth/**").permitAll()
-
 								.requestMatchers("/admin/**").hasRole("ADMIN")
 
 								.anyRequest().authenticated()
-
 						/*
 						 * TUTTI GLI ALTRI ENDPOINT
 						 * richiedono autenticazione.

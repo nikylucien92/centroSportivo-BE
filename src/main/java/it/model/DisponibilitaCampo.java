@@ -1,5 +1,6 @@
 package it.model;
 
+import it.enumerated.StatoDisponibilita;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -21,8 +22,9 @@ public class DisponibilitaCampo {
     @Column(name="id_disponibilita")
     private Integer id;
 
-    @Column(name="stato_disponibilita")
-    private String statoDisponibilita;
+	@Enumerated(EnumType.STRING)
+	@Column(name = "stato_disponibilita", nullable = false)
+	private StatoDisponibilita statoDisponibilita;
 
     @Column(name="data_disponibilita")
     private LocalDateTime data;
@@ -32,9 +34,6 @@ public class DisponibilitaCampo {
 
     @Column(name="ora_fine")
     private LocalDateTime oraFine;
-
-    @Column(name="disponibilita")
-    private Boolean disponibilita;
 
     @OneToMany(mappedBy = "disponibilitaCampo")
     private List<Prenotazione> prenotazioniCampo;
