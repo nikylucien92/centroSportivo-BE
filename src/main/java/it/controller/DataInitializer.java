@@ -44,35 +44,35 @@ public class DataInitializer implements CommandLineRunner {
 		// ==========================================
 
 		Campo padel = creaCampo(
-				"Campo 1",
+				"Padel",
 				"Padel",
 				BigDecimal.valueOf(25.00)
 
 		);
 
 		Campo tennis = creaCampo(
-				"Campo 2",
+				"Tennis",
 				"Tennis",
 				BigDecimal.valueOf(20.00)
 
 		);
 
 		Campo calcio5 = creaCampo(
-				"Campo 3",
+				"Calcio a 5",
 				"Calcio a 5",
 				BigDecimal.valueOf(50.00)
 
 		);
 
 		Campo basket = creaCampo(
-				"Campo 4",
+				"Basket",
 				"Basket",
 				BigDecimal.valueOf(35.00)
 
 		);
 
 		Campo calcio11 = creaCampo(
-				"Campo 5",
+				"Calcio a 11",
 				"Calcio a 11",
 				BigDecimal.valueOf(100.00)
 
